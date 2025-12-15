@@ -1,9 +1,11 @@
+import { getBackendPingUrl } from '../../lib/backend';
+
 export default async function handler(req, res) {
   if (req.method !== 'GET') {
     return res.status(405).json({ error: 'Method not allowed' });
   }
 
-  const backendUrl = process.env.BACKEND_API_URL || 'http://localhost:4000/api/ping';
+  const backendUrl = getBackendPingUrl();
 
   try {
     const response = await fetch(backendUrl);
