@@ -6,7 +6,7 @@ export default function Home() {
   const [isLoading, setIsLoading] = useState(false);
   const [error, setError] = useState(null);
 
-  const apiUrl = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:4000/api/ping';
+  const apiUrl = '/api/backend-ping';
 
   const callApi = async () => {
     setIsLoading(true);
@@ -46,7 +46,7 @@ export default function Home() {
       }}>
         <h1>Next.js + Railway API CORS test</h1>
         <p>
-          Update <code>NEXT_PUBLIC_API_URL</code> and redeploy to call your Railway Node API from Vercel.
+          Set <code>BACKEND_API_URL</code> to your Railway endpoint so this Next.js API route can proxy the request.
         </p>
         <button
           onClick={callApi}
