@@ -7,8 +7,16 @@ export default async function handler(req, res) {
 
   const backendUrl = buildBackendUrl('/api/businesses');
 
+  if (!req.headers.authorization) {
+    return res.status(401).json({ error: 'Missing Authorization header' });
+    }
+
   try {
-    const response = await fetch(backendUrl);
+    const headers = {};
+
+    headers.Authorization = req.headers.authorization;
+
+    const response = await fetch(backendUrl, { headers });
     const data = await response.json();
 
     if (!response.ok) {

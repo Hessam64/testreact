@@ -1,5 +1,6 @@
-import { useState } from 'react';
+import { useEffect, useState } from 'react';
 import Head from 'next/head';
+import { supabase } from '../lib/supabaseClient';
 
 export default function Home() {
   const [pingResponse, setPingResponse] = useState(null);
@@ -12,6 +13,31 @@ export default function Home() {
   const [businesses, setBusinesses] = useState([]);
   const [businessesIsLoading, setBusinessesIsLoading] = useState(false);
   const [businessesError, setBusinessesError] = useState(null);
+  const [email, setEmail] = useState('');
+  const [password, setPassword] = useState('');
+  const [authError, setAuthError] = useState(null);
+  const [authIsLoading, setAuthIsLoading] = useState(false);
+  const [session, setSession] = useState(null);
+
+  useEffect(() => {
+    let ignore = false;
+    supabase.auth.getSession().then(({ data }) => {
+      if (!ignore) {
+        setSession(data.session);
+      }
+    });
+
+    const {
+      data: { subscription }
+    } = supabase.auth.onAuthStateChange((_event, currentSession) => {
+      setSession(currentSession);
+    });
+
+    return () => {
+      ignore = true;
+      subscription.unsubscribe();
+    };
+  }, []);
 
   const callPing = async () => {
     setPingIsLoading(true);
@@ -68,11 +94,20 @@ export default function Home() {
   };
 
   const loadBusinesses = async () => {
+    if (!session?.access_token) {
+      setBusinessesError('Please log in to Supabase first.');
+      return;
+    }
+
     setBusinessesIsLoading(true);
     setBusinessesError(null);
 
     try {
-      const res = await fetch('/api/businesses');
+      const res = await fetch('/api/businesses', {
+        headers: {
+          Authorization: `Bearer ${session.access_token}`
+        }
+      });
       const data = await res.json();
 
       if (!res.ok) {
@@ -117,6 +152,88 @@ export default function Home() {
             maxWidth: '600px'
           }}
         >
+          <div
+            style={{
+              border: '1px solid #eaeaea',
+              borderRadius: '0.75rem',
+              padding: '1rem',
+              background: 'white'
+            }}
+          >
+            <h2>Supabase Login</h2>
+            <p style={{ marginBottom: '0.5rem' }}>
+              Log in with your Supabase user so the API calls include your JWT (required for RLS policies).
+            </p>
+
+            {session ? (
+              <div style={{ display: 'flex', flexDirection: 'column', gap: '0.5rem' }}>
+                <div>
+                  Signed in as <strong>{session.user?.email}</strong>
+                </div>
+                <button
+                  onClick={handleLogout}
+                  disabled={authIsLoading}
+                  style={{
+                    alignSelf: 'flex-start',
+                    padding: '0.5rem 1rem',
+                    borderRadius: '0.5rem',
+                    border: 'none',
+                    background: '#ef4444',
+                    color: 'white',
+                    cursor: authIsLoading ? 'not-allowed' : 'pointer'
+                  }}
+                >
+                  {authIsLoading ? 'Signing out…' : 'Sign out'}
+                </button>
+              </div>
+            ) : (
+              <form
+                onSubmit={handleLogin}
+                style={{ display: 'flex', flexDirection: 'column', gap: '0.5rem' }}
+              >
+                <input
+                  type="email"
+                  value={email}
+                  onChange={(event) => setEmail(event.target.value)}
+                  placeholder="name@example.com"
+                  style={{
+                    padding: '0.5rem 0.75rem',
+                    borderRadius: '0.5rem',
+                    border: '1px solid #ccc'
+                  }}
+                />
+                <input
+                  type="password"
+                  value={password}
+                  onChange={(event) => setPassword(event.target.value)}
+                  placeholder="Password"
+                  style={{
+                    padding: '0.5rem 0.75rem',
+                    borderRadius: '0.5rem',
+                    border: '1px solid #ccc'
+                  }}
+                />
+                <button
+                  type="submit"
+                  disabled={authIsLoading}
+                  style={{
+                    padding: '0.5rem 1rem',
+                    borderRadius: '0.5rem',
+                    border: 'none',
+                    background: '#6366f1',
+                    color: 'white',
+                    cursor: authIsLoading ? 'not-allowed' : 'pointer'
+                  }}
+                >
+                  {authIsLoading ? 'Signing in…' : 'Sign in'}
+                </button>
+              </form>
+            )}
+            {authError && (
+              <p style={{ color: 'red', marginTop: '0.5rem' }}>{authError}</p>
+            )}
+          </div>
+
           <div
             style={{
               border: '1px solid #eaeaea',
@@ -295,3 +412,36 @@ export default function Home() {
     </>
   );
 }
+  const handleLogin = async (event) => {
+    event.preventDefault();
+
+    if (!email || !password) {
+      setAuthError('Email and password are required');
+      return;
+    }
+
+    setAuthIsLoading(true);
+    setAuthError(null);
+
+    const { data, error } = await supabase.auth.signInWithPassword({
+      email,
+      password
+    });
+
+    if (error) {
+      setAuthError(error.message);
+    } else {
+      setSession(data.session);
+      setEmail('');
+      setPassword('');
+    }
+
+    setAuthIsLoading(false);
+  };
+
+  const handleLogout = async () => {
+    setAuthIsLoading(true);
+    await supabase.auth.signOut();
+    setSession(null);
+    setAuthIsLoading(false);
+  };
