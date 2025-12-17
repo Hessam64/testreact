@@ -123,6 +123,40 @@ export default function Home() {
     }
   };
 
+  const handleLogin = async (event) => {
+    event.preventDefault();
+
+    if (!email || !password) {
+      setAuthError('Email and password are required');
+      return;
+    }
+
+    setAuthIsLoading(true);
+    setAuthError(null);
+
+    const { data, error } = await supabase.auth.signInWithPassword({
+      email,
+      password
+    });
+
+    if (error) {
+      setAuthError(error.message);
+    } else {
+      setSession(data.session);
+      setEmail('');
+      setPassword('');
+    }
+
+    setAuthIsLoading(false);
+  };
+
+  const handleLogout = async () => {
+    setAuthIsLoading(true);
+    await supabase.auth.signOut();
+    setSession(null);
+    setAuthIsLoading(false);
+  };
+
   return (
     <>
       <Head>
@@ -411,37 +445,3 @@ export default function Home() {
       </main>
     </>
   );
-}
-  const handleLogin = async (event) => {
-    event.preventDefault();
-
-    if (!email || !password) {
-      setAuthError('Email and password are required');
-      return;
-    }
-
-    setAuthIsLoading(true);
-    setAuthError(null);
-
-    const { data, error } = await supabase.auth.signInWithPassword({
-      email,
-      password
-    });
-
-    if (error) {
-      setAuthError(error.message);
-    } else {
-      setSession(data.session);
-      setEmail('');
-      setPassword('');
-    }
-
-    setAuthIsLoading(false);
-  };
-
-  const handleLogout = async () => {
-    setAuthIsLoading(true);
-    await supabase.auth.signOut();
-    setSession(null);
-    setAuthIsLoading(false);
-  };
